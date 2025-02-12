@@ -1,5 +1,16 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.postgresql:postgresql:42.7.2"
+        classpath "org.flywaydb:flyway-database-postgresql:11.3.1"
+    }
+}
+
 plugins {
     id 'java'
+    id 'org.flywaydb.flyway' version '11.3.1'
 }
 
 group = 'org.reallylastone'
