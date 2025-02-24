@@ -1,0 +1,73 @@
+version: '3.8'
+services:
+  stock-market-collector-instance-1:
+    image: reallylastone/stock-market-collector
+    env_file:
+      - .env
+    environment:
+      - FINNHUB_TOKEN=$FINNHUB_TOKEN_INSTANCE_1
+    command:
+      - /bin/sh
+      - -c
+      - |
+        echo "Running Flyway migration..."
+        gradle flywayMigrate \
+          -Pflyway.url=jdbc:postgresql://stock-market-collector-db:5432/stock-collector \
+          -Pflyway.user=$STOCK_COLLECTOR_POSTGRES_USER \
+          -Pflyway.password=$STOCK_COLLECTOR_POSTGRES_PASSWORD \
+          -Pflyway.baselineVersion=0 &&
+        echo "Flyway migration complete" > /shared/flyway_completed &&
+        sync &&
+        echo "Starting application" &&
+        java -jar build/libs/stock-market-collector-1.0-SNAPSHOT.jar
+    depends_on:
+      stock-market-collector-db:
+        condition: service_healthy
+    volumes:
+      - /tmp/shared:/shared
+
+  stock-market-collector-instance-2:
+    image: reallylastone/stock-market-collector
+    env_file:
+      - .env
+    environment:
+      - FINNHUB_TOKEN=$FINNHUB_TOKEN_INSTANCE_2
+    command:
+      - /bin/sh
+      - -c
+      - |
+        while [ ! -f /shared/flyway_completed ]; do
+          echo "Waiting for Flyway migration to complete..."
+          sleep 5
+        done
+        echo "Flyway migration complete, starting application"
+        java -jar build/libs/stock-market-collector-1.0-SNAPSHOT.jar
+    depends_on:
+      stock-market-collector-instance-1:
+        condition: service_started
+      stock-market-collector-db:
+        condition: service_healthy
+    volumes:
+      - /tmp/shared:/shared
+
+  stock-market-collector-db:
+    image: postgres:17.3-alpine3.21
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_DB=stock-collector
+      - POSTGRES_USER=${STOCK_COLLECTOR_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${STOCK_COLLECTOR_POSTGRES_PASSWORD}
+    ports:
+      - '5432:5432'
+    volumes:
+      - stock-market-collector-db:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${STOCK_COLLECTOR_POSTGRES_USER}" ]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  stock-market-collector-db:

@@ -5,11 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.reallylastone.trade.domain.Trade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public class FinnhubWebSocketClient extends WebSocketClient {
+    public static final List<String> STOCKS = List.of("AAPL", "BINANCE:BTCUSDT");
+    private static final Logger log = LoggerFactory.getLogger(FinnhubWebSocketClient.class);
     private final ObjectMapper mapper = new ObjectMapper();
     private final BlockingQueue<Trade> messageQueue;
 
@@ -21,9 +26,9 @@ public class FinnhubWebSocketClient extends WebSocketClient {
 
     @Override
     public void onOpen(ServerHandshake handshake) {
-        System.out.println("Connected to server");
-        send("{\"type\":\"subscribe\",\"symbol\":\"AAPL\"}");
-        send("{\"type\":\"subscribe\",\"symbol\":\"BINANCE:BTCUSDT\"}");
+        log.info("Connected to Finnhub server");
+        STOCKS.forEach(stock -> send("{\"type\":\"subscribe\",\"symbol\":\"" + stock + "\"}"));
+        log.info("Subscribed to {} stocks", STOCKS);
     }
 
     @Override
@@ -33,7 +38,7 @@ public class FinnhubWebSocketClient extends WebSocketClient {
             if (event.type().equals("ping")) return;
             boolean changed = messageQueue.addAll(event.data());
             if (!changed) {
-                System.out.println("Trades queue not changed!");
+                log.warn("Trades queue not changed for data {}", event.data());
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
@@ -43,7 +48,7 @@ public class FinnhubWebSocketClient extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        System.out.println("Connection closed: " + reason);
+        log.info("Connection to Finnhub server closed for reason {}", reason);
     }
 
     @Override

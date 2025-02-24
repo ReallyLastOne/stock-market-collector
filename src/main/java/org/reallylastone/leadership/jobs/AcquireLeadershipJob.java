@@ -2,11 +2,14 @@ package org.reallylastone.leadership.jobs;
 
 import org.reallylastone.leadership.domain.Leader;
 import org.reallylastone.leadership.gateway.LeadershipGateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.ZonedDateTime;
 
 public class AcquireLeadershipJob implements Runnable {
     public static final int RENEWAL_INTERVAL_SECONDS = 15;
+    private static final Logger log = LoggerFactory.getLogger(AcquireLeadershipJob.class);
     private final long pid;
     private final LeadershipGateway leadershipGateway;
 
@@ -26,6 +29,7 @@ public class AcquireLeadershipJob implements Runnable {
         if (amILeader(leader)) {
             leadershipGateway.updateHeartbeat();
         } else if (shouldIAcquireLeadership(leader)) {
+            log.info("Process {} acquired leadership", pid);
             leadershipGateway.acquireLeadership(pid);
         }
     }

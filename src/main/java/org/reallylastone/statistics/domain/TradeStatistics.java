@@ -1,6 +1,8 @@
 package org.reallylastone.statistics.domain;
 
 import org.reallylastone.trade.domain.Trade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -12,6 +14,7 @@ import java.util.List;
 
 
 public class TradeStatistics {
+    private static final Logger log = LoggerFactory.getLogger(TradeStatistics.class);
     private final BigDecimal maxPrice;
     private final BigDecimal minPrice;
     private final BigDecimal avgPrice;
@@ -31,7 +34,7 @@ public class TradeStatistics {
                 .toList();
 
         if (mismatched.size() != trades.size()) {
-            System.out.printf("%d trades mismatch the interval [%s, %s]%n", mismatched.size(), startTimestamp, endTimestamp);
+            log.warn("{} trades mismatch the interval [{}, {}]", mismatched.size(), startTimestamp, endTimestamp);
         }
         if (!trades.isEmpty()) {
             this.openPrice = trades.getFirst().p();

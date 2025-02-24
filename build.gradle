@@ -11,10 +11,32 @@ buildscript {
 plugins {
     id 'java'
     id 'org.flywaydb.flyway' version '11.3.1'
+    id 'application'
+}
+
+application {
+    mainClass = 'org.reallylastone.Main'
+}
+
+jar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes "Main-Class": "org.reallylastone.Main"
+    }
+
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
 }
 
 group = 'org.reallylastone'
 version = '1.0-SNAPSHOT'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(23)
+    }
+}
 
 repositories {
     mavenCentral()
@@ -24,6 +46,8 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     implementation 'org.postgresql:postgresql:42.7.2'
+    implementation 'org.slf4j:slf4j-api:2.0.16'
+    runtimeOnly 'org.slf4j:slf4j-simple:2.0.16'
     implementation 'org.java-websocket:Java-WebSocket:1.6.0'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.15.0'
     implementation 'com.google.guava:guava:33.4.0-jre'

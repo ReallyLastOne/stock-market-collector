@@ -10,10 +10,12 @@ import org.reallylastone.statistics.jobs.CalculateStatisticsJob;
 import org.reallylastone.trade.domain.Trade;
 import org.reallylastone.trade.gateway.TradeGateway;
 import org.reallylastone.trade.jobs.TradeWriter;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.sql.SQLException;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -26,32 +28,27 @@ import java.util.logging.Logger;
 public class Main {
     private static final String FINNHUB_URL = "wss://ws.finnhub.io?token=";
     private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(7);
-    private static final Logger logger = Logger.getLogger(Main.class.getName());
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
-        String finnhubToken = System.getProperty("finnhub.token", null);
+        String url = "jdbc:postgresql://stock-market-collector-db:5432/stock-collector";
+        String finnhubToken = System.getenv("FINNHUB_TOKEN");
+        String username = System.getenv("STOCK_COLLECTOR_POSTGRES_USER");
+        String password = System.getenv("STOCK_COLLECTOR_POSTGRES_PASSWORD");
+
+        log.info("Connecting to {} with user {}", url, username);
+
         Objects.requireNonNull(finnhubToken, "finnhub token is required");
-
-        Properties properties = loadProperties();
-        String url = (String) properties.get("datasource.url");
-        String username = (String) properties.get("datasource.username");
-        String password = (String) properties.get("datasource.password");
-
-        Objects.requireNonNull(url, "datasource.url cannot be null");
         Objects.requireNonNull(username, "datasource.username cannot be null");
         Objects.requireNonNull(password, "datasource.password cannot be null");
 
-        Registry.setProperties(properties);
-        Registry.setConnectionPool(new ConnectionPool(url, username, password, 7));
-        Registry.setLeadershipGateway(new LeadershipGateway(Registry.getConnectionPool().getConnection()));
-        Registry.setTradeGateway(new TradeGateway(Registry.getConnectionPool().getConnection()));
-        Registry.setTradeStatisticsGateway(new TradeStatisticsGateway(Registry.getConnectionPool().getConnection()));
+        initializeRegistry(url, username, password);
 
         scheduler.scheduleAtFixedRate(new AcquireLeadershipJob(Registry.getLeadershipGateway()), 0, 15, TimeUnit.SECONDS);
         scheduler.scheduleAtFixedRate(new CalculateStatisticsJob(Registry.getTradeStatisticsGateway(), Registry.getTradeGateway()), 0, 1, TimeUnit.MINUTES);
 
         BlockingQueue<Trade> queue = new ArrayBlockingQueue<>(10000);
-        TradeWriter writer = new TradeWriter(queue, Boolean.parseBoolean((String) properties.get("slowMode.enabled")), Registry.getTradeGateway());
+        TradeWriter writer = new TradeWriter(queue, false, Registry.getTradeGateway());
         FinnhubWebSocketClient client = new FinnhubWebSocketClient(new URI(FINNHUB_URL + finnhubToken), queue);
 
         client.connect();
@@ -60,13 +57,10 @@ public class Main {
         Thread.currentThread().join();
     }
 
-    private static Properties loadProperties() throws IOException {
-        Properties properties = new Properties();
-
-        try (InputStream baseInput = Main.class.getClassLoader().getResourceAsStream("application.properties")) {
-            if (baseInput != null) properties.load(baseInput);
-        }
-        return properties;
+    private static void initializeRegistry(String url, String username, String password) throws SQLException, InterruptedException {
+        Registry.setConnectionPool(new ConnectionPool(url, username, password, 7));
+        Registry.setLeadershipGateway(new LeadershipGateway(Registry.getConnectionPool().getConnection()));
+        Registry.setTradeGateway(new TradeGateway(Registry.getConnectionPool().getConnection()));
+        Registry.setTradeStatisticsGateway(new TradeStatisticsGateway(Registry.getConnectionPool().getConnection()));
     }
-
 }
