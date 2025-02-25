@@ -1,0 +1,36 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+before_script:
+  - chmod 755 ./docker/build-image.sh ./docker/push-image.sh
+  - apk add --no-cache bash
+  - apk add --no-cache openssh-client
+build:
+  stage: build
+  script: bash ./docker/build-image.sh && bash ./docker/push-image.sh "$DOCKER_PASSWORD"
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: push
+    paths:
+      - build
+      - .gradle
+
+test:
+  stage: test
+  script: echo test
+  cache:
+    key: "$CI_COMMIT_REF_NAME"
+    policy: pull
+    paths:
+      - build
+      - .gradle
+
+deploy:
+  stage: deploy
+  script: 
+    - mkdir -p ~/.ssh && echo "$HOSTNAME_PRIVATE_KEY" | base64 -d > ~/.ssh/file && chmod 0600 ~/.ssh/file
+    - scp -o StrictHostKeyChecking=no -i ~/.ssh/file ./docker/docker-compose.yml $HOSTNAME_USER@$HOSTNAME:/etc/opt/stock-collector/ 
+    - /usr/bin/ssh -o StrictHostKeyChecking=no -i ~/.ssh/file $HOSTNAME_USER@$HOSTNAME 'sudo /usr/bin/docker pull reallylastone/stock-market-collector && sudo /usr/bin/systemctl restart stock-market-collector --no-block'
+  environment: production
