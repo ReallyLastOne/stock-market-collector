@@ -1,6 +1,5 @@
 package org.reallylastone.finnhub;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
@@ -36,12 +35,11 @@ public class FinnhubWebSocketClient extends WebSocketClient {
         try {
             FinnhubMessageEvent event = mapper.readValue(message, FinnhubMessageEvent.class);
             if (event.type().equals("ping")) return;
-            boolean changed = messageQueue.addAll(event.data());
-            if (!changed) {
-                log.warn("Trades queue not changed for data {}", event.data());
+            for (Trade e : event.data()) {
+                messageQueue.put(e);
             }
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
     }

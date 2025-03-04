@@ -5,6 +5,7 @@ import org.reallylastone.trade.domain.Trade;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,4 +52,34 @@ public class TradeGateway {
         return trades;
     }
 
+    public void insertTrades(List<Trade> trades) {
+        try {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement stmt = connection.prepareStatement(INSERT_SQL)) {
+                for (Trade trade : trades) {
+                    stmt.setString(1, String.valueOf(trade.c()));
+                    stmt.setBigDecimal(2, trade.p());
+                    stmt.setString(3, trade.s());
+                    stmt.setLong(4, trade.t());
+                    stmt.setBigDecimal(5, trade.v());
+                    stmt.addBatch();
+                }
+
+                stmt.executeBatch();
+                connection.commit();
+            } catch (Exception e) {
+                connection.rollback();
+                e.printStackTrace();
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
 }

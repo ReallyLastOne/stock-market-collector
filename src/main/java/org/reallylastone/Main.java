@@ -12,18 +12,14 @@ import org.reallylastone.trade.gateway.TradeGateway;
 import org.reallylastone.trade.jobs.TradeWriter;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 public class Main {
     private static final String FINNHUB_URL = "wss://ws.finnhub.io?token=";
@@ -47,7 +43,7 @@ public class Main {
         scheduler.scheduleAtFixedRate(new AcquireLeadershipJob(Registry.getLeadershipGateway()), 0, 15, TimeUnit.SECONDS);
         scheduler.scheduleAtFixedRate(new CalculateStatisticsJob(Registry.getTradeStatisticsGateway(), Registry.getTradeGateway()), 0, 1, TimeUnit.MINUTES);
 
-        BlockingQueue<Trade> queue = new ArrayBlockingQueue<>(10000);
+        BlockingQueue<Trade> queue = new ArrayBlockingQueue<>(10_000_000);
         TradeWriter writer = new TradeWriter(queue, false, Registry.getTradeGateway());
         FinnhubWebSocketClient client = new FinnhubWebSocketClient(new URI(FINNHUB_URL + finnhubToken), queue);
 
