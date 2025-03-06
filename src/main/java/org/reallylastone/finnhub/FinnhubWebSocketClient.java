@@ -34,7 +34,10 @@ public class FinnhubWebSocketClient extends WebSocketClient {
     public void onMessage(String message) {
         try {
             FinnhubMessageEvent event = mapper.readValue(message, FinnhubMessageEvent.class);
-            if (event.type().equals("ping")) return;
+            if (event.type().equals("ping")) {
+                send("{\"type\":\"pong\"}");
+                return;
+            }
             for (Trade e : event.data()) {
                 messageQueue.put(e);
             }
