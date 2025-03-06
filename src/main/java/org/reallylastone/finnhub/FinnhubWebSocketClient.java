@@ -46,7 +46,7 @@ public class FinnhubWebSocketClient extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        log.info("Connection to Finnhub server closed for reason {}", reason);
+        log.info("Connection to Finnhub server closed for reason {}, code {}, remote {}", reason, code, remote);
     }
 
     @Override
