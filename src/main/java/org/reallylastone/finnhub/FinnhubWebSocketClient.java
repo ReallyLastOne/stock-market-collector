@@ -10,10 +10,12 @@ import org.slf4j.LoggerFactory;
 import java.net.URI;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class FinnhubWebSocketClient extends WebSocketClient {
     public static final List<String> STOCKS = List.of("AAPL", "BINANCE:BTCUSDT");
     private static final Logger log = LoggerFactory.getLogger(FinnhubWebSocketClient.class);
+    private static final AtomicLong PING_COUNTER = new AtomicLong();
     private final ObjectMapper mapper = new ObjectMapper();
     private final BlockingQueue<Trade> messageQueue;
 
@@ -37,6 +39,8 @@ public class FinnhubWebSocketClient extends WebSocketClient {
             if (event.type().equals("ping")) {
                 send("{\"type\":\"pong\"}");
                 return;
+            } else if (!event.type().equals("trade")) {
+                log.info("Some weird event {}", event);
             }
             for (Trade e : event.data()) {
                 messageQueue.put(e);
@@ -49,7 +53,8 @@ public class FinnhubWebSocketClient extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
-        log.info("Connection to Finnhub server closed for reason {}, code {}, remote {}", reason, code, remote);
+        log.info("Connection to Finnhub server closed for reason {}, code {}, remote {}, ping counter {}", reason, code, remote, PING_COUNTER.get());
+        System.exit(1);
     }
 
     @Override
