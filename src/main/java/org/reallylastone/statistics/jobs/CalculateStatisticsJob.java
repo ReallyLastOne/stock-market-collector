@@ -4,6 +4,8 @@ import org.reallylastone.statistics.domain.TradeStatistics;
 import org.reallylastone.statistics.gateway.TradeStatisticsGateway;
 import org.reallylastone.trade.domain.Trade;
 import org.reallylastone.trade.gateway.TradeGateway;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
@@ -13,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public class CalculateStatisticsJob implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(CalculateStatisticsJob.class);
     private final TradeStatisticsGateway tradeStatisticsGateway;
     private final TradeGateway tradeGateway;
 
@@ -36,6 +39,7 @@ public class CalculateStatisticsJob implements Runnable {
         Map<String, List<Trade>> symbolTrades = new HashMap<>();
         trades.forEach(trade -> symbolTrades.computeIfAbsent(trade.s(), _ -> new ArrayList<>()).add(trade));
         symbolTrades.forEach((k, l) -> {
+                log.info("calculating symbol stats {}",k );
             TradeStatistics tradeStatistics = new TradeStatistics(l, start, end, k);
             tradeStatisticsGateway.insertTradeStatistics(tradeStatistics);
         });

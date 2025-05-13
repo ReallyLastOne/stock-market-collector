@@ -8,7 +8,14 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class TradeStatisticsGateway {
-    private static final String INSERT_TRADE_STATS_SQL = "INSERT INTO TRADE_STATISTICS (start_timestamp," + " end_timestamp, volume, max_price, min_price, avg_price, open_price, close_price, symbol) " + "values (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (start_timestamp, end_timestamp) do update " + "set volume = excluded.volume, max_price = excluded.max_price, min_price = excluded.min_price," + "avg_price = excluded.avg_price, open_price = excluded.open_price, close_price = excluded.close_price";
+    //@formatter:off
+    private static final String INSERT_TRADE_STATS_SQL = "INSERT INTO TRADE_STATISTICS (start_timestamp,"
+            + " end_timestamp, volume, max_price, min_price, avg_price, open_price, close_price, symbol) "
+            + "values (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (start_timestamp, end_timestamp, symbol) do update "
+            + "set volume = excluded.volume, max_price = excluded.max_price, min_price = excluded.min_price,"
+            + "avg_price = excluded.avg_price, open_price = excluded.open_price, close_price = excluded.close_price";
+    //@formatter:on
+
     private final Connection connection;
 
     public TradeStatisticsGateway(Connection connection) {
