@@ -2,6 +2,7 @@ version: '3.8'
 services:
   stock-market-collector-instance-1:
     image: reallylastone/stock-market-collector
+    restart: always
     env_file:
       - .env
     environment:
@@ -11,6 +12,7 @@ services:
       - -c
       - |
         echo "Running Flyway migration..."
+        rm -rf /shared/*
         gradle flywayMigrate \
           -Pflyway.url=jdbc:postgresql://stock-market-collector-db:5432/stock-collector \
           -Pflyway.user=$STOCK_COLLECTOR_POSTGRES_USER \
@@ -28,6 +30,7 @@ services:
 
   stock-market-collector-instance-2:
     image: reallylastone/stock-market-collector
+    restart: always
     env_file:
       - .env
     environment:
