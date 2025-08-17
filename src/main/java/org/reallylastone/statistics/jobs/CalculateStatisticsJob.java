@@ -39,7 +39,7 @@ public class CalculateStatisticsJob implements Runnable {
         Map<String, List<Trade>> symbolTrades = new HashMap<>();
         trades.forEach(trade -> symbolTrades.computeIfAbsent(trade.s(), _ -> new ArrayList<>()).add(trade));
         symbolTrades.forEach((k, l) -> {
-                log.info("calculating symbol stats {}",k );
+            log.trace("calculating symbol stats {}", k);
             TradeStatistics tradeStatistics = new TradeStatistics(l, start, end, k);
             tradeStatisticsGateway.insertTradeStatistics(tradeStatistics);
         });

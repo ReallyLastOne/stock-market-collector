@@ -18,35 +18,37 @@ public class TradeStatistics {
     private final BigDecimal maxPrice;
     private final BigDecimal minPrice;
     private final BigDecimal avgPrice;
-    private BigDecimal openPrice;
-    private BigDecimal closePrice;
     private final ZonedDateTime startTimestamp;
     private final ZonedDateTime endTimestamp;
     private final BigDecimal volume;
     private final String symbol;
+    private BigDecimal openPrice;
+    private BigDecimal closePrice;
 
     public TradeStatistics(List<Trade> trades, ZonedDateTime startTimestamp, ZonedDateTime endTimestamp, String symbol) {
-        List<Trade> mismatched = trades.stream()
+        List<Trade> filtered = trades.stream()
                 .filter(trade -> {
-                    ZonedDateTime tradeTimestamp = ZonedDateTime.ofInstant(Instant.ofEpochSecond(trade.t()), ZoneId.systemDefault());
-                    return tradeTimestamp.isBefore(startTimestamp) || tradeTimestamp.isAfter(endTimestamp);
+                    ZonedDateTime tradeTimestamp = ZonedDateTime.ofInstant(Instant.ofEpochMilli(trade.t()), ZoneId.systemDefault());
+                    return !(tradeTimestamp.isBefore(startTimestamp) || tradeTimestamp.isAfter(endTimestamp));
                 })
                 .toList();
 
-        if (mismatched.size() != trades.size()) {
-            log.warn("{} trades mismatch the interval [{}, {}]", mismatched.size(), startTimestamp, endTimestamp);
+        if (filtered.size() != trades.size()) {
+            log.warn("{} trades mismatch the interval [{}, {}]", trades.size() - filtered.size(), startTimestamp, endTimestamp);
         }
-        if (!trades.isEmpty()) {
-            this.openPrice = trades.getFirst().p();
-            this.closePrice = trades.getLast().p();
+
+        if (!filtered.isEmpty()) {
+            this.openPrice = filtered.getFirst().p();
+            this.closePrice = filtered.getLast().p();
         }
         this.symbol = symbol;
         this.startTimestamp = startTimestamp;
         this.endTimestamp = endTimestamp;
-        this.volume = trades.stream().map(Trade::v).reduce(BigDecimal.ZERO, BigDecimal::add);
-        this.avgPrice = trades.stream().map(Trade::p).reduce(BigDecimal.ZERO, BigDecimal::add).divide(volume, RoundingMode.HALF_UP);
-        this.maxPrice = trades.stream().map(Trade::p).max(Comparator.naturalOrder()).orElse(BigDecimal.valueOf(0));
-        this.minPrice = trades.stream().map(Trade::p).min(Comparator.naturalOrder()).orElse(BigDecimal.valueOf(0));
+        this.volume = filtered.stream().map(Trade::v).reduce(BigDecimal.ZERO, BigDecimal::add);
+        this.avgPrice = filtered.isEmpty() ? BigDecimal.ZERO
+                : filtered.stream().map(Trade::p).reduce(BigDecimal.ZERO, BigDecimal::add).divide(BigDecimal.valueOf(filtered.size()), RoundingMode.HALF_UP);
+        this.maxPrice = filtered.stream().map(Trade::p).max(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+        this.minPrice = filtered.stream().map(Trade::p).min(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
     }
 
     public BigDecimal getMaxPrice() {

@@ -8,11 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 
 public class FinnhubWebSocketClient extends WebSocketClient {
-    public static final List<String> STOCKS = List.of("AAPL", "BINANCE:BTCUSDT");
+    public static final List<String> STOCKS = Arrays.stream(System.getenv("STOCK_COLLECTOR_STOCKS").split(",")).toList();
     private static final Logger log = LoggerFactory.getLogger(FinnhubWebSocketClient.class);
     private final ObjectMapper mapper = new ObjectMapper();
     private final BlockingQueue<Trade> messageQueue;

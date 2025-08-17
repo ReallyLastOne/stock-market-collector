@@ -10,6 +10,7 @@ import org.reallylastone.statistics.jobs.CalculateStatisticsJob;
 import org.reallylastone.trade.domain.Trade;
 import org.reallylastone.trade.gateway.TradeGateway;
 import org.reallylastone.trade.jobs.TradeWriter;
+import org.reallylastone.trade.jobs.TradeWriterJob;
 import org.slf4j.LoggerFactory;
 
 import java.net.URI;
@@ -44,11 +45,11 @@ public class Main {
         scheduler.scheduleAtFixedRate(new CalculateStatisticsJob(Registry.getTradeStatisticsGateway(), Registry.getTradeGateway()), 0, 1, TimeUnit.MINUTES);
 
         BlockingQueue<Trade> queue = new ArrayBlockingQueue<>(10_000_000);
-        TradeWriter writer = new TradeWriter(queue, false, Registry.getTradeGateway());
+        TradeWriterJob writerJob = new TradeWriterJob(new TradeWriter(queue, false, Registry.getTradeGateway()));
         FinnhubWebSocketClient client = new FinnhubWebSocketClient(new URI(FINNHUB_URL + finnhubToken), queue);
 
         client.connect();
-        writer.run();
+        writerJob.run();
 
         Thread.currentThread().join();
     }
