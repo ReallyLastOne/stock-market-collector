@@ -41,11 +41,13 @@ public class Main {
 
         initializeRegistry(url, username, password);
 
+        log.info("Process ID {}", ProcessHandle.current().pid());
+
         scheduler.scheduleAtFixedRate(new AcquireLeadershipJob(Registry.getLeadershipGateway()), 0, 15, TimeUnit.SECONDS);
-        scheduler.scheduleAtFixedRate(new CalculateStatisticsJob(Registry.getTradeStatisticsGateway(), Registry.getTradeGateway()), 0, 1, TimeUnit.MINUTES);
+        scheduler.scheduleAtFixedRate(new CalculateStatisticsJob(Registry.getTradeStatisticsGateway(), Registry.getTradeGateway(), Registry.getLeadershipGateway()), 0, 1, TimeUnit.MINUTES);
 
         BlockingQueue<Trade> queue = new ArrayBlockingQueue<>(10_000_000);
-        TradeWriterJob writerJob = new TradeWriterJob(new TradeWriter(queue, false, Registry.getTradeGateway()));
+        TradeWriterJob writerJob = new TradeWriterJob(new TradeWriter(queue, false, Registry.getTradeGateway()), Registry.getLeadershipGateway());
         FinnhubWebSocketClient client = new FinnhubWebSocketClient(new URI(FINNHUB_URL + finnhubToken), queue);
 
         client.connect();

@@ -20,6 +20,10 @@ public class LeadershipGateway {
         this.connection = connection;
     }
 
+    public boolean amILeader() {
+        return getLeader().id() == ProcessHandle.current().pid();
+    }
+
     public Leader getLeader() {
         try (PreparedStatement stmt = connection.prepareStatement(GET_LEADER_SQL);
              ResultSet rs = stmt.executeQuery()) {

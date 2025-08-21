@@ -3,6 +3,7 @@ package org.reallylastone.job;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.reallylastone.leadership.gateway.LeadershipGateway;
 import org.reallylastone.statistics.domain.TradeStatistics;
 import org.reallylastone.statistics.gateway.TradeStatisticsGateway;
 import org.reallylastone.statistics.jobs.CalculateStatisticsJob;
@@ -23,13 +24,16 @@ public class CalculateStatisticsJobTest {
     private TradeGateway tradeGateway;
     private TradeStatisticsGateway statsGateway;
     private CalculateStatisticsJob job;
+    private LeadershipGateway leadershipGateway;
 
     @BeforeEach
     void setup() {
         // given
         tradeGateway = mock(TradeGateway.class);
         statsGateway = mock(TradeStatisticsGateway.class);
-        job = new CalculateStatisticsJob(statsGateway, tradeGateway);
+        leadershipGateway = mock(LeadershipGateway.class);
+        job = new CalculateStatisticsJob(statsGateway, tradeGateway, leadershipGateway);
+        when(leadershipGateway.amILeader()).thenReturn(true);
     }
 
     private List<Trade> generateTrades(List<String> symbols, int tradesPerSymbol, ZonedDateTime timestamp) {

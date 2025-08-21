@@ -1,5 +1,6 @@
 package org.reallylastone.statistics.jobs;
 
+import org.reallylastone.leadership.gateway.LeadershipGateway;
 import org.reallylastone.statistics.domain.TradeStatistics;
 import org.reallylastone.statistics.gateway.TradeStatisticsGateway;
 import org.reallylastone.trade.domain.Trade;
@@ -18,10 +19,12 @@ public class CalculateStatisticsJob implements Runnable {
     private static final Logger log = LoggerFactory.getLogger(CalculateStatisticsJob.class);
     private final TradeStatisticsGateway tradeStatisticsGateway;
     private final TradeGateway tradeGateway;
+    private final LeadershipGateway leadershipGateway;
 
-    public CalculateStatisticsJob(TradeStatisticsGateway tradeStatisticsGateway, TradeGateway tradeGateway) {
+    public CalculateStatisticsJob(TradeStatisticsGateway tradeStatisticsGateway, TradeGateway tradeGateway, LeadershipGateway leadershipGateway) {
         this.tradeStatisticsGateway = tradeStatisticsGateway;
         this.tradeGateway = tradeGateway;
+        this.leadershipGateway = leadershipGateway;
     }
 
     @Override
@@ -29,10 +32,12 @@ public class CalculateStatisticsJob implements Runnable {
         ZonedDateTime start = ZonedDateTime.now().truncatedTo(ChronoUnit.MINUTES);
         ZonedDateTime end = start.plusMinutes(1);
 
-        List<Trade> tradeCurrentMinute = tradeGateway.getTradesBetween(start, end);
-        calculateStatistics(start, start.plusMinutes(1), tradeCurrentMinute);
-        List<Trade> tradeMinuteBefore = tradeGateway.getTradesBetween(start.minusMinutes(1), start);
-        calculateStatistics(start.minusMinutes(1), start, tradeMinuteBefore);
+        if (leadershipGateway.amILeader()) {
+            List<Trade> tradeCurrentMinute = tradeGateway.getTradesBetween(start, end);
+            calculateStatistics(start, start.plusMinutes(1), tradeCurrentMinute);
+            List<Trade> tradeMinuteBefore = tradeGateway.getTradesBetween(start.minusMinutes(1), start);
+            calculateStatistics(start.minusMinutes(1), start, tradeMinuteBefore);
+        }
     }
 
     private void calculateStatistics(ZonedDateTime start, ZonedDateTime end, List<Trade> trades) {
