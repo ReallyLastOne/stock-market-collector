@@ -21,7 +21,7 @@ public class LeadershipGateway {
     }
 
     public boolean amILeader() {
-        return getLeader().id() == ProcessHandle.current().pid();
+        return getLeader().processId() == ProcessHandle.current().pid();
     }
 
     public Leader getLeader() {
