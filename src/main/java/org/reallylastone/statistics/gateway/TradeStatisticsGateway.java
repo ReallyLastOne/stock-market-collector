@@ -1,13 +1,17 @@
 package org.reallylastone.statistics.gateway;
 
 
+import org.reallylastone.Main;
 import org.reallylastone.statistics.domain.TradeStatistics;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 public class TradeStatisticsGateway {
+    private static final Logger log = LoggerFactory.getLogger(TradeStatisticsGateway.class);
     //@formatter:off
     private static final String INSERT_TRADE_STATS_SQL = "INSERT INTO TRADE_STATISTICS (start_timestamp,"
             + " end_timestamp, volume, max_price, min_price, avg_price, open_price, close_price, symbol) "
@@ -35,7 +39,7 @@ public class TradeStatisticsGateway {
             stmt.setString(9, tradeStatistics.getSymbol());
             stmt.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Exception on inserting trade statistics");
         }
     }
 }

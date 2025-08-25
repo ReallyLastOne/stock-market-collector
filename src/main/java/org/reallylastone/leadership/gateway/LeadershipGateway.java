@@ -1,61 +1,65 @@
 package org.reallylastone.leadership.gateway;
 
-import org.reallylastone.leadership.domain.Leader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.OffsetDateTime;
+import java.sql.Timestamp;
 import java.time.ZonedDateTime;
 
 public class LeadershipGateway {
-    private static final String GET_LEADER_SQL = "SELECT * FROM LEADER";
-    private static final String UPDATE_HEARTBEAT_SQL = "UPDATE LEADER SET RENEW_TIME=now() WHERE ID = 1";
-    private static final String ACQUIRE_LEADERSHIP_SQL = "UPDATE LEADER SET RENEW_TIME=now(), ACQUIRE_TIME=now(), process_id=? WHERE ID = 1";
+    public static final long LEADER_TIMEOUT_MS = 30_000;
+    private static final Logger log = LoggerFactory.getLogger(LeadershipGateway.class);
+
+    private static final String UPDATE_HEARTBEAT_SQL =
+            "UPDATE leader SET renew_time = now() WHERE id = 1 AND process_id = ?";
+    private static final String TRY_ACQUIRE_SQL =
+            "UPDATE leader SET renew_time = now(), acquire_time = now(), process_id = ? " +
+                    "WHERE id = 1 AND (process_id IS NULL OR renew_time < ?)";
 
     private final Connection connection;
+    private boolean amILeader;
+    private ZonedDateTime renewTime;
 
     public LeadershipGateway(Connection connection) {
         this.connection = connection;
     }
 
     public boolean amILeader() {
-        return getLeader().processId() == ProcessHandle.current().pid();
-    }
-
-    public Leader getLeader() {
-        try (PreparedStatement stmt = connection.prepareStatement(GET_LEADER_SQL);
-             ResultSet rs = stmt.executeQuery()) {
-            return rs.next() ? buildLeader(rs) : null;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+        if (renewTime == null || renewTime.isBefore(ZonedDateTime.now().minusSeconds(LEADER_TIMEOUT_MS / 1000))) {
+            amILeader = false;
         }
+        return amILeader;
     }
 
-    public void updateHeartbeat() {
-        try (PreparedStatement stmt = connection.prepareStatement(UPDATE_HEARTBEAT_SQL)) {
-            stmt.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public boolean updateHeartbeat(long pid) {
+        return executeUpdate(UPDATE_HEARTBEAT_SQL, stmt -> stmt.setLong(1, pid));
     }
 
-    public void acquireLeadership(long pid) {
-        try (PreparedStatement stmt = connection.prepareStatement(ACQUIRE_LEADERSHIP_SQL)) {
+    public boolean tryAcquireLeadership(long pid) {
+        return executeUpdate(TRY_ACQUIRE_SQL, stmt -> {
             stmt.setLong(1, pid);
-            stmt.executeUpdate();
+            stmt.setTimestamp(2, new Timestamp(System.currentTimeMillis() - LEADER_TIMEOUT_MS));
+        });
+    }
+
+    private boolean executeUpdate(String sql, SQLConsumer<PreparedStatement> paramSetter) {
+        try (PreparedStatement stmt = connection.prepareStatement(sql)) {
+            paramSetter.accept(stmt);
+            boolean success = stmt.executeUpdate() > 0;
+            amILeader = success;
+            if (amILeader) renewTime = ZonedDateTime.now();
+            return success;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error executing SQL: {}", sql, e);
+            amILeader = false;
+            return false;
         }
     }
 
-    private Leader buildLeader(ResultSet rs) throws SQLException {
-        return new Leader(
-                rs.getInt(1),
-                ZonedDateTime.from(rs.getObject(2, OffsetDateTime.class)),
-                ZonedDateTime.from(rs.getObject(3, OffsetDateTime.class)),
-                rs.getLong(4));
+    @FunctionalInterface
+    private interface SQLConsumer<T> {
+        void accept(T t) throws Exception;
     }
 }

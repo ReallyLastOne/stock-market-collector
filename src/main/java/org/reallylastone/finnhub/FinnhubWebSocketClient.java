@@ -43,7 +43,7 @@ public class FinnhubWebSocketClient extends WebSocketClient {
                 messageQueue.put(e);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error onMessage", e);
         }
 
     }

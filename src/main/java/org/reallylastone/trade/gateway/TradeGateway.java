@@ -1,6 +1,8 @@
 package org.reallylastone.trade.gateway;
 
 import org.reallylastone.trade.domain.Trade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -11,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TradeGateway {
+    private static final Logger log = LoggerFactory.getLogger(TradeGateway.class);
     private static final String INSERT_SQL = "INSERT INTO finnhub_trades (c, p, s, t, v) VALUES (?::jsonb, ?, ?, ?, ?)";
     private static final String SELECT_TRADES_SQL = "SELECT * FROM finnhub_trades WHERE t >= ? AND t <= ?";
     private final Connection connection;
@@ -28,7 +31,7 @@ public class TradeGateway {
             stmt.setBigDecimal(5, trade.v());
             stmt.executeUpdate();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error on insertTrade", e);
         }
     }
 
@@ -47,7 +50,7 @@ public class TradeGateway {
                 trades.add(trade);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error on getTradesBetween", e);
         }
         return trades;
     }
@@ -70,15 +73,15 @@ public class TradeGateway {
                 connection.commit();
             } catch (Exception e) {
                 connection.rollback();
-                e.printStackTrace();
+                log.error("Error on commiting transaction insertTrades", e);
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("Error on transaction rollback", e);
         } finally {
             try {
                 connection.setAutoCommit(true);
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.error("Error on setting auto commit");
             }
         }
     }

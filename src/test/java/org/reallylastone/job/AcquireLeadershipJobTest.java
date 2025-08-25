@@ -3,11 +3,8 @@ package org.reallylastone.job;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.reallylastone.leadership.domain.Leader;
 import org.reallylastone.leadership.gateway.LeadershipGateway;
 import org.reallylastone.leadership.jobs.AcquireLeadershipJob;
-
-import java.time.ZonedDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -26,76 +23,58 @@ public class AcquireLeadershipJobTest {
 
     @Test
     void testAlreadyLeaderUpdatesHeartbeat() {
-        // given
-        Leader leader = mock(Leader.class);
-        when(leader.processId()).thenReturn(pid);
-        when(leadershipGateway.getLeader()).thenReturn(leader);
+        when(leadershipGateway.amILeader()).thenReturn(true);
+        when(leadershipGateway.updateHeartbeat(pid)).thenReturn(true);
 
-        // when
         job.run();
 
-        // then
-        verify(leadershipGateway).updateHeartbeat();
-        verify(leadershipGateway, never()).acquireLeadership(anyLong());
+        verify(leadershipGateway).updateHeartbeat(pid);
+        verify(leadershipGateway, never()).tryAcquireLeadership(anyLong());
     }
 
     @Test
     void testCanAcquireLeadership() {
-        // given
-        Leader leader = mock(Leader.class);
-        when(leader.processId()).thenReturn(pid + 1);
-        when(leader.renewTimestamp()).thenReturn(ZonedDateTime.now().minusSeconds(AcquireLeadershipJob.RENEWAL_INTERVAL_SECONDS + 1));
-        when(leadershipGateway.getLeader()).thenReturn(leader);
+        when(leadershipGateway.amILeader()).thenReturn(false);
+        when(leadershipGateway.tryAcquireLeadership(pid)).thenReturn(true);
 
-        // when
         job.run();
 
-        // then
         ArgumentCaptor<Long> captor = ArgumentCaptor.forClass(Long.class);
-        verify(leadershipGateway).acquireLeadership(captor.capture());
+        verify(leadershipGateway).tryAcquireLeadership(captor.capture());
         assertEquals(pid, captor.getValue());
-        verify(leadershipGateway, never()).updateHeartbeat();
+        verify(leadershipGateway, never()).updateHeartbeat(anyLong());
     }
 
     @Test
     void testCannotAcquireIfRecentHeartbeat() {
-        // given
-        Leader leader = mock(Leader.class);
-        when(leader.processId()).thenReturn(pid + 1);
-        when(leader.renewTimestamp()).thenReturn(ZonedDateTime.now());
-        when(leadershipGateway.getLeader()).thenReturn(leader);
+        when(leadershipGateway.amILeader()).thenReturn(false);
+        when(leadershipGateway.tryAcquireLeadership(pid)).thenReturn(false);
 
-        // when
         job.run();
 
-        // then
-        verify(leadershipGateway, never()).acquireLeadership(anyLong());
-        verify(leadershipGateway, never()).updateHeartbeat();
+        verify(leadershipGateway).tryAcquireLeadership(pid);
+        verify(leadershipGateway, never()).updateHeartbeat(anyLong());
     }
 
     @Test
     void testTwoProcessesCannotAcquireAtOnce() {
-        // given
         LeadershipGateway gateway1 = mock(LeadershipGateway.class);
         LeadershipGateway gateway2 = mock(LeadershipGateway.class);
         long pid1 = pid;
         long pid2 = pid + 1000;
 
-        Leader leader = mock(Leader.class);
-        when(leader.processId()).thenReturn(pid1 - 1);
-        when(leader.renewTimestamp()).thenReturn(ZonedDateTime.now().minusSeconds(AcquireLeadershipJob.RENEWAL_INTERVAL_SECONDS + 1));
-        when(gateway1.getLeader()).thenReturn(leader);
-        when(gateway2.getLeader()).thenReturn(leader);
+        when(gateway1.amILeader()).thenReturn(false);
+        when(gateway2.amILeader()).thenReturn(false);
+        when(gateway1.tryAcquireLeadership(pid1)).thenReturn(true);
+        when(gateway2.tryAcquireLeadership(pid2)).thenReturn(false);
 
         AcquireLeadershipJob job1 = new AcquireLeadershipJob(gateway1);
         AcquireLeadershipJob job2 = new AcquireLeadershipJob(gateway2);
 
-        // when
         job1.run();
         job2.run();
 
-        // then
-        verify(gateway1).acquireLeadership(pid1);
-        verify(gateway2, never()).acquireLeadership(pid2);
+        verify(gateway1).tryAcquireLeadership(pid1);
+        verify(gateway2, never()).tryAcquireLeadership(pid2);
     }
 }
