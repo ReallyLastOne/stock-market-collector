@@ -7,9 +7,10 @@ import org.slf4j.LoggerFactory;
 import java.time.ZonedDateTime;
 
 public class FinnhubWebSocketClientReconnector implements Runnable {
+    public static final int RECONNECT_ATTEMPT_INTERVAL_SECONDS = 20;
     private static final Logger log = LoggerFactory.getLogger(FinnhubWebSocketClientReconnector.class);
     private final FinnhubWebSocketClient client;
-    private ZonedDateTime lastFail;
+    private ZonedDateTime lastAttempt;
 
     public FinnhubWebSocketClientReconnector(FinnhubWebSocketClient client) {
         this.client = client;
@@ -17,12 +18,12 @@ public class FinnhubWebSocketClientReconnector implements Runnable {
 
     @Override
     public void run() {
-        if (client.isClosed() && (lastFail == null || lastFail.isBefore(ZonedDateTime.now().minusMinutes(1)))) {
+        if (client.isClosed() && (lastAttempt == null || lastAttempt.isBefore(ZonedDateTime.now().minusSeconds(RECONNECT_ATTEMPT_INTERVAL_SECONDS)))) {
             log.info("Finnhub client is closed, reconnecting");
             try {
+                lastAttempt = ZonedDateTime.now();
                 client.reconnectBlocking();
             } catch (InterruptedException e) {
-                lastFail = ZonedDateTime.now();
                 log.error("Error when trying to reconnect to a Finnhub server", e);
             }
         }
