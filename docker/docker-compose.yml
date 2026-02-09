@@ -27,6 +27,8 @@ services:
         condition: service_healthy
     volumes:
       - /tmp/shared:/shared
+    networks:
+      - tool-network
 
   stock-market-collector-instance-2:
     image: reallylastone/stock-market-collector
@@ -52,6 +54,8 @@ services:
         condition: service_healthy
     volumes:
       - /tmp/shared:/shared
+    networks:
+      - tool-network
 
   stock-market-collector-db:
     image: postgres:17.3-alpine3.21
@@ -71,6 +75,13 @@ services:
       interval: 2s
       timeout: 5s
       retries: 5
+    networks:
+      - tool-network
+
+networks:
+  tool-network:
+    driver: bridge
+    name: tool-network
 
 volumes:
   stock-market-collector-db:
